@@ -1,0 +1,17 @@
+
+# Testing mode docker-compose override
+# Usage: docker compose -f docker-compose.yml -f docker-compose.testing.yml up
+
+services:
+  api:
+    environment:
+      - TESTING_MODE=true
+
+  worker:
+    environment:
+      - TESTING_MODE=true
+    # Override volumes for local testing (replaces /mnt/audio with local dir)
+    volumes:
+      - ./test_audio:/mnt/audio:ro
+      - whisper-cache:/root/.cache
+      - ./testing_output.log:/app/testing_output.log

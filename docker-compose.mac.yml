@@ -1,0 +1,77 @@
+
+# macOS/Local Development docker-compose configuration
+# Usage: docker compose -f docker-compose.mac.yml up
+# This file works standalone and doesn't require docker-compose.yml
+
+services:
+  # Redis service for job queue
+  redis:
+    image: redis:7-alpine
+    container_name: transcriber_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - transcriber_network
+
+  # FastAPI API service (no GPU needed)
+  api:
+    build: .
+    image: transcriber_service:latest
+    container_name: transcriber_api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - WHISPER_MODEL=large-v3
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
+      - LLM_DEVICE=cpu
+      - DEFAULT_CALLBACK_URL=https://example-callback.local/api/transcripts
+      - CALLBACK_TIMEOUT_SECONDS=30
+      - CALLBACK_RETRY_COUNT=3
+      - CALLBACK_RETRY_DELAY_SECONDS=3
+      - TESTING_MODE=true
+      - TESTING_LOG_FILE=/app/testing_output.log
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - transcriber_network
+
+  # Worker service (CPU-only for macOS)
+  worker:
+    image: transcriber_service:latest
+    container_name: transcriber_worker
+    command: ["python", "-m", "app.worker"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - WHISPER_MODEL=large-v3
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
+      - LLM_DEVICE=cpu
+      - DEFAULT_CALLBACK_URL=https://example-callback.local/api/transcripts
+      - CALLBACK_TIMEOUT_SECONDS=30
+      - CALLBACK_RETRY_COUNT=3
+      - CALLBACK_RETRY_DELAY_SECONDS=3
+      - TESTING_MODE=true
+      - TESTING_LOG_FILE=/app/testing_output.log
+    volumes:
+      # Local test audio folder
+      - ./test_audio:/mnt/audio:ro
+      # Cache for Whisper models
+      - whisper-cache:/root/.cache
+      # Testing output log
+      - ./testing_output.log:/app/testing_output.log
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - transcriber_network
+
+networks:
+  transcriber_network:
+    driver: bridge
+
+volumes:
+  whisper-cache:

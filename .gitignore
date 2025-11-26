@@ -1,0 +1,32 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Environments
+.env
+.env.local
+.env.*.local
+.venv/
+venv/
+
+# Project artifacts
+testing_output.log
+*.log
+
+# Tooling and IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Packaging / coverage
+build/
+dist/
+*.egg-info/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/

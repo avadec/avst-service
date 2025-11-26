@@ -1,0 +1,78 @@
+
+services:
+  # Redis service for job queue
+  redis:
+    image: redis:7-alpine
+    container_name: transcriber_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - transcriber_network
+
+  # FastAPI API service (no GPU needed)
+  api:
+    build: .
+    image: transcriber_service:latest
+    container_name: transcriber_api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - WHISPER_MODEL=large-v3
+      - WHISPER_DEVICE=cuda:0
+      - WHISPER_COMPUTE_TYPE=float16
+      - LLM_DEVICE=cuda:1
+      - DEFAULT_CALLBACK_URL=https://example-callback.local/api/transcripts
+      - CALLBACK_TIMEOUT_SECONDS=30
+      - CALLBACK_RETRY_COUNT=3
+      - CALLBACK_RETRY_DELAY_SECONDS=3
+      - TESTING_MODE=false
+      - TESTING_LOG_FILE=/app/testing_output.log
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - transcriber_network
+
+  # Worker service (needs both GPUs)
+  worker:
+    image: transcriber_service:latest
+    container_name: transcriber_worker
+    command: ["python", "-m", "app.worker"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - WHISPER_MODEL=large-v3
+      - WHISPER_DEVICE=cuda:0
+      - WHISPER_COMPUTE_TYPE=float16
+      - LLM_DEVICE=cuda:1
+      - DEFAULT_CALLBACK_URL=https://example-callback.local/api/transcripts
+      - CALLBACK_TIMEOUT_SECONDS=30
+      - CALLBACK_RETRY_COUNT=3
+      - CALLBACK_RETRY_DELAY_SECONDS=3
+      - TESTING_MODE=false
+      - TESTING_LOG_FILE=/app/testing_output.log
+    volumes:
+      # Mount host audio folder (adjust this path to your actual network mount)
+      - /mnt/audio:/mnt/audio:ro
+      # Cache for Whisper models
+      - whisper-cache:/root/.cache
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - transcriber_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2  # Request access to both GPUs (0 and 1)
+              capabilities: [gpu]
+
+networks:
+  transcriber_network:
+    driver: bridge
+
+volumes:
+  whisper-cache:
