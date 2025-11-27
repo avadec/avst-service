@@ -45,14 +45,11 @@ def process_job(job: Dict[str, Any]) -> None:
     logger.info(f"Processing job {job_id} for audio: {audio_path}")
     
     try:
-        # Step 1: Verify file exists (only when STT is enabled)
-        if settings.ENABLE_STT:
-            if not os.path.exists(audio_path):
-                raise FileNotFoundError(f"Audio file not found: {audio_path}")
-            
-            logger.info(f"Audio file exists: {audio_path}")
-        else:
-            logger.info(f"STT step disabled - skipping audio file existence check for: {audio_path}")
+        # Step 1: Verify file exists (always check, even in testing mode)
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+        
+        logger.info(f"Audio file exists: {audio_path}")
         
         # Step 2: Run Whisper STT (can be disabled)
         if settings.ENABLE_STT:

@@ -225,6 +225,40 @@ clone_or_update_repo() {
   fi
 }
 
+validate_audio_path() {
+  local audio_path="$1"
+  
+  # Check if path exists
+  if [[ ! -d "$audio_path" ]]; then
+    echo ""
+    echo "WARNING: Specified folder does not exist: $audio_path"
+    local proceed
+    proceed="$(ask_yes_no "Would you like to proceed with this folder?" "n")"
+    
+    if [[ "$proceed" != "true" ]]; then
+      return 1  # Validation failed
+    fi
+    return 0  # User chose to proceed anyway
+  fi
+  
+  # Check if path is accessible (readable)
+  if [[ ! -r "$audio_path" ]]; then
+    echo ""
+    echo "WARNING: Specified folder is not accessible (no read permissions): $audio_path"
+    local proceed
+    proceed="$(ask_yes_no "Would you like to proceed with this folder?" "n")"
+    
+    if [[ "$proceed" != "true" ]]; then
+      return 1  # Validation failed
+    fi
+    return 0  # User chose to proceed anyway
+  fi
+  
+  # Path exists and is accessible
+  log "Audio path validated: $audio_path"
+  return 0
+}
+
 generate_env_file() {
   local install_dir="$1"
   local enable_stt="$2"
@@ -424,6 +458,15 @@ clone_or_update_repo "$INSTALL_DIR"
 AUDIO_PATH="$(ask_with_default "Host path to mounted audio folder" "$DEFAULT_AUDIO_PATH")"
 # Expand tilde in audio path as well
 AUDIO_PATH="${AUDIO_PATH/#\~/$HOME}"
+
+# Validate audio path and re-prompt if user declines
+while ! validate_audio_path "$AUDIO_PATH"; do
+  echo ""
+  log "Please specify a different audio folder path."
+  AUDIO_PATH="$(ask_with_default "Host path to mounted audio folder" "$DEFAULT_AUDIO_PATH")"
+  AUDIO_PATH="${AUDIO_PATH/#\~/$HOME}"
+done
+
 API_PORT="$(ask_with_default "API port on host" "$DEFAULT_API_PORT")"
 
 if [[ "$INSTALL_MODE" == "testing" ]]; then
