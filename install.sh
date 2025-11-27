@@ -64,11 +64,109 @@ ask_with_default() {
   echo "$reply"
 }
 
+install_docker_linux() {
+  log "Installing Docker Engine on Linux..."
+  
+  # Detect Linux distribution
+  if [[ -f /etc/os-release ]]; then
+    . /etc/os-release
+    local distro="$ID"
+  else
+    fatal "Cannot detect Linux distribution. Please install Docker manually."
+  fi
+  
+  case "$distro" in
+    ubuntu|debian)
+      log "Detected $distro. Installing Docker via apt..."
+      sudo apt-get update
+      sudo apt-get install -y ca-certificates curl gnupg
+      sudo install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/$distro/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      sudo chmod a+r /etc/apt/keyrings/docker.gpg
+      
+      echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$distro \
+        $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+        sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+      
+      sudo apt-get update
+      sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      
+      # Start and enable Docker
+      sudo systemctl start docker
+      sudo systemctl enable docker
+      
+      # Add current user to docker group
+      sudo usermod -aG docker "$USER"
+      
+      log "Docker installed successfully!"
+      log "IMPORTANT: You need to log out and back in for group changes to take effect."
+      log "Or run: newgrp docker"
+      ;;
+    
+    centos|rhel|fedora)
+      log "Detected $distro. Installing Docker via yum/dnf..."
+      sudo yum install -y yum-utils
+      sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      
+      sudo systemctl start docker
+      sudo systemctl enable docker
+      sudo usermod -aG docker "$USER"
+      
+      log "Docker installed successfully!"
+      log "IMPORTANT: You need to log out and back in for group changes to take effect."
+      ;;
+    
+    *)
+      fatal "Unsupported Linux distribution: $distro. Please install Docker manually: https://docs.docker.com/engine/install/"
+      ;;
+  esac
+}
+
 check_prereqs() {
   log "Checking required commands..."
 
   command_exists git     || fatal "git is not installed. Please install git and rerun."
-  command_exists docker  || fatal "docker is not installed. Please install Docker Engine and rerun."
+  
+  # Check for Docker
+  if ! command_exists docker; then
+    log "Docker Engine required but not installed."
+    
+    # Detect OS
+    local os_type="$(uname -s)"
+    
+    if [[ "$os_type" == "Darwin" ]]; then
+      # macOS - Docker Desktop required
+      echo ""
+      echo "Docker Desktop is required for macOS."
+      echo "Please download and install Docker Desktop from:"
+      echo "  https://www.docker.com/products/docker-desktop"
+      echo ""
+      echo "After installation:"
+      echo "  1. Open Docker Desktop"
+      echo "  2. Wait for it to start (Docker icon in menu bar)"
+      echo "  3. Re-run this script"
+      echo ""
+      fatal "Please install Docker Desktop and rerun."
+    elif [[ "$os_type" == "Linux" ]]; then
+      # Linux - offer to auto-install
+      local should_install
+      should_install="$(ask_yes_no "Would you like to install Docker Engine now?" "y")"
+      
+      if [[ "$should_install" == "true" ]]; then
+        install_docker_linux
+      else
+        echo ""
+        echo "Please install Docker Engine manually:"
+        echo "  https://docs.docker.com/engine/install/"
+        echo ""
+        fatal "Please install Docker Engine and rerun."
+      fi
+    else
+      fatal "Unsupported OS: $os_type. Please install Docker manually and rerun."
+    fi
+  fi
 
   # docker compose (plugin) or docker-compose (v1) is fine
   if docker compose version >/dev/null 2>&1; then

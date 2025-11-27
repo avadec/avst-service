@@ -41,6 +41,7 @@ services:
 
   # Worker service (CPU-only for macOS)
   worker:
+    build: .
     image: transcriber_service:latest
     container_name: transcriber_worker
     command: ["python", "-m", "app.worker"]
