@@ -4,12 +4,26 @@
 
 services:
   api:
+    # Override / extend environment for testing
+    # Compose will merge this with the base env and override matching keys
     environment:
-      - TESTING_MODE=true
+      TESTING_MODE: "true"
+      ENABLE_STT: "false"
+      ENABLE_SUMMARIZATION: "false"
+      ENABLE_CALLBACK: "false"
 
   worker:
+    # Override / extend environment for testing
     environment:
-      - TESTING_MODE=true
+      TESTING_MODE: "true"
+      ENABLE_STT: "false"
+      ENABLE_SUMMARIZATION: "false"
+      ENABLE_CALLBACK: "false"
+
+    # Remove GPU reservations from the base compose (no NVIDIA on Mac)
+    # This overrides the whole `deploy` block from docker-compose.yml
+    deploy: {}
+
     # Override volumes for local testing (replaces /mnt/audio with local dir)
     volumes:
       - ./test_audio:/mnt/audio:ro
