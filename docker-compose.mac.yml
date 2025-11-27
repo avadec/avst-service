@@ -56,6 +56,9 @@ services:
       - CALLBACK_RETRY_DELAY_SECONDS=3
       - TESTING_MODE=true
       - TESTING_LOG_FILE=/app/testing_output.log
+      - ENABLE_STT=false
+      - ENABLE_SUMMARIZATION=false
+      - ENABLE_CALLBACK=false
     volumes:
       # Local test audio folder
       - ./test_audio:/mnt/audio:ro

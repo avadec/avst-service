@@ -8,6 +8,7 @@ The transcriber service includes a **TESTING_MODE** that allows you to debug the
 - ✅ Returns **mock transcript data** 
 - ✅ Writes output to **console** and **log file** (`/app/testing_output.log`)
 - ✅ Allows testing the complete pipeline: API → Redis → Worker → Callback
+- ✅ Pipeline toggles are set to **skip STT, summarization, and callbacks** in the testing compose overlay
 
 ## Quick Start - Testing Mode
 
@@ -145,6 +146,9 @@ docker compose up -d
 |----------|--------------|------------------|
 | `TESTING_MODE` | `true` | `false` |
 | `TESTING_LOG_FILE` | `/app/testing_output.log` | `/app/testing_output.log` |
+| `ENABLE_STT` | `false` | `true` |
+| `ENABLE_SUMMARIZATION` | `false` | `true` |
+| `ENABLE_CALLBACK` | `false` | `true` |
 
 ## Benefits of Testing Mode
 

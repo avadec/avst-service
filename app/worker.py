@@ -14,9 +14,10 @@ import os
 import sys
 from typing import Dict, Any
 from .queue import dequeue_job
-from .stt import transcribe_audio_file
+from .stt import transcribe_audio_file, dummy_transcription
 from .summarizer import summarize_text
 from .callbacks import send_callback
+from .config import settings
 
 
 # Configure logging
@@ -44,19 +45,30 @@ def process_job(job: Dict[str, Any]) -> None:
     logger.info(f"Processing job {job_id} for audio: {audio_path}")
     
     try:
-        # Step 1: Verify file exists
-        if not os.path.exists(audio_path):
-            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+        # Step 1: Verify file exists (only when STT is enabled)
+        if settings.ENABLE_STT:
+            if not os.path.exists(audio_path):
+                raise FileNotFoundError(f"Audio file not found: {audio_path}")
+            
+            logger.info(f"Audio file exists: {audio_path}")
+        else:
+            logger.info(f"STT step disabled - skipping audio file existence check for: {audio_path}")
         
-        logger.info(f"Audio file exists: {audio_path}")
+        # Step 2: Run Whisper STT (can be disabled)
+        if settings.ENABLE_STT:
+            logger.info("Running Whisper STT...")
+            full_text, segments, language = transcribe_audio_file(audio_path)
+        else:
+            logger.info("STT step disabled - using dummy transcription")
+            full_text, segments, language = dummy_transcription(audio_path)
         
-        # Step 2: Run Whisper STT on GPU 0
-        logger.info("Running Whisper STT...")
-        full_text, segments, language = transcribe_audio_file(audio_path)
-        
-        # Step 3: Run summarisation (dummy for now, future LLM on GPU 1)
-        logger.info("Running summarisation...")
-        summary = summarize_text(full_text)
+        # Step 3: Run summarisation (can be disabled)
+        if settings.ENABLE_SUMMARIZATION:
+            logger.info("Running summarisation...")
+            summary = summarize_text(full_text)
+        else:
+            logger.info("Summarisation step disabled - using dummy summary")
+            summary = "Summary disabled (dummy)."
         
         # Step 4: Build success payload
         success_payload = {
@@ -71,9 +83,12 @@ def process_job(job: Dict[str, Any]) -> None:
             "metadata": metadata
         }
         
-        # Step 5: Send callback
-        logger.info(f"Job {job_id} completed successfully")
-        send_callback(callback_url, success_payload)
+        # Step 5: Send callback (can be disabled)
+        if settings.ENABLE_CALLBACK:
+            logger.info(f"Job {job_id} completed successfully")
+            send_callback(callback_url, success_payload)
+        else:
+            logger.info(f"Callback step disabled - not sending callback for job {job_id}")
         
     except Exception as e:
         # Handle any errors
@@ -89,8 +104,11 @@ def process_job(job: Dict[str, Any]) -> None:
             "metadata": metadata
         }
         
-        # Send error callback
-        send_callback(callback_url, error_payload)
+        # Send error callback (can be disabled)
+        if settings.ENABLE_CALLBACK:
+            send_callback(callback_url, error_payload)
+        else:
+            logger.info("Callback step disabled - not sending error callback")
 
 
 def main():

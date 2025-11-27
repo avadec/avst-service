@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # Future LLM configuration (GPU 1)
     LLM_DEVICE: str = "cuda:1"
     
+    # Pipeline step toggles
+    ENABLE_STT: bool = True
+    ENABLE_SUMMARIZATION: bool = True
+    ENABLE_CALLBACK: bool = True
+    
     # Testing mode configuration
     TESTING_MODE: bool = False
     TESTING_LOG_FILE: str = "/app/testing_output.log"

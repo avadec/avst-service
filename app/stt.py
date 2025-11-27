@@ -90,6 +90,11 @@ def _mock_transcription(path: str) -> Tuple[str, List[Dict[str, Any]], str]:
     return full_text, segments, language
 
 
+def dummy_transcription(path: str) -> Tuple[str, List[Dict[str, Any]], str]:
+    """Dummy transcription when STT step is disabled."""
+    return _mock_transcription(path)
+
+
 def transcribe_audio_file(path: str) -> Tuple[str, List[Dict[str, Any]], str]:
     """
     Run Whisper STT on the given WAV file path using GPU 0.

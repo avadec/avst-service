@@ -31,5 +31,6 @@
 
 ## Security & Configuration Tips
 - Secrets and URLs must remain in environment variables or compose files; never commit real webhook URLs, tokens, or credentials.
-- Confirm GPU targeting before deploy: `WHISPER_DEVICE` (default `cuda:0`) and `LLM_DEVICE` (default `cuda:1` placeholder).
+- Confirm GPU targeting before deploy: `WHISPER_DEVICE` (default `cuda:0`) and `LLM_DEVICE` (default `cuda:1` placeholder; compose may override to `cuda:0`).
+- Use pipeline toggles (`ENABLE_STT`, `ENABLE_SUMMARIZATION`, `ENABLE_CALLBACK`) to disable steps for dev/test; when STT is off, dummy transcription is used and callbacks can be suppressed.
 - Keep `TESTING_MODE=true` only in dev/testing; production should run with `TESTING_MODE=false` to load Whisper.

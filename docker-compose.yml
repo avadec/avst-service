@@ -22,7 +22,7 @@ services:
       - WHISPER_MODEL=large-v3
       - WHISPER_DEVICE=cuda:0
       - WHISPER_COMPUTE_TYPE=float16
-      - LLM_DEVICE=cuda:1
+      - LLM_DEVICE=cuda:0
       - DEFAULT_CALLBACK_URL=https://example-callback.local/api/transcripts
       - CALLBACK_TIMEOUT_SECONDS=30
       - CALLBACK_RETRY_COUNT=3
@@ -52,6 +52,9 @@ services:
       - CALLBACK_RETRY_DELAY_SECONDS=3
       - TESTING_MODE=false
       - TESTING_LOG_FILE=/app/testing_output.log
+      - ENABLE_STT=true
+      - ENABLE_SUMMARIZATION=true
+      - ENABLE_CALLBACK=true
     volumes:
       # Mount host audio folder (adjust this path to your actual network mount)
       - /mnt/audio:/mnt/audio:ro

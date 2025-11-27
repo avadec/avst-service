@@ -157,10 +157,13 @@ Environment variables (set in `docker-compose.yml`):
 | `WHISPER_MODEL` | `large-v3` | Whisper model to use (tiny, base, small, medium, large-v3) |
 | `WHISPER_DEVICE` | `cuda:0` | GPU device for Whisper STT |
 | `WHISPER_COMPUTE_TYPE` | `float16` | Compute precision (float16, int8) |
-| `LLM_DEVICE` | `cuda:1` | GPU device for future LLM (currently unused) |
+| `LLM_DEVICE` | `cuda:1` (compose defaults to `cuda:0`) | GPU device for future LLM (currently unused) |
 | `CALLBACK_TIMEOUT_SECONDS` | `30` | HTTP timeout for callbacks |
 | `CALLBACK_RETRY_COUNT` | `3` | Number of callback retry attempts |
 | `CALLBACK_RETRY_DELAY_SECONDS` | `3` | Delay between callback retries |
+| `ENABLE_STT` | `true` (testing/mac compose sets `false`) | Toggle STT step; when `false`, uses dummy transcription and skips file existence checks |
+| `ENABLE_SUMMARIZATION` | `true` (testing/mac compose sets `false`) | Toggle summarization step; when `false`, uses placeholder summary |
+| `ENABLE_CALLBACK` | `true` (testing/mac compose sets `false`) | Toggle HTTP callbacks; when `false`, no callback is sent |
 
 ## Project Structure
 
