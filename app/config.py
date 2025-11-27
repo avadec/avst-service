@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     TESTING_MODE: bool = False
     TESTING_LOG_FILE: str = "/app/testing_output.log"
     
+    # Remote file download configuration
+    TEMP_DOWNLOAD_DIR: str = "/tmp/audio_downloads"
+    DOWNLOAD_TIMEOUT_SECONDS: int = 300  # 5 minutes for large files
+    DOWNLOAD_CHUNK_SIZE: int = 8192  # 8KB chunks for streaming
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

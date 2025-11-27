@@ -18,6 +18,7 @@ from .stt import transcribe_audio_file, dummy_transcription
 from .summarizer import summarize_text
 from .callbacks import send_callback
 from .config import settings
+from .file_fetcher import fetch_audio_file, cleanup_temp_file
 
 
 # Configure logging
@@ -44,20 +45,22 @@ def process_job(job: Dict[str, Any]) -> None:
     
     logger.info(f"Processing job {job_id} for audio: {audio_path}")
     
+    local_file_path = None
+    is_temp_file = False
+    
     try:
-        # Step 1: Verify file exists (always check, even in testing mode)
-        if not os.path.exists(audio_path):
-            raise FileNotFoundError(f"Audio file not found: {audio_path}")
-        
-        logger.info(f"Audio file exists: {audio_path}")
+        # Step 1: Fetch audio file (download if remote, validate if local)
+        logger.info(f"Fetching audio file: {audio_path}")
+        local_file_path, is_temp_file = fetch_audio_file(audio_path, job_id)
+        logger.info(f"Audio file ready for processing: {local_file_path} (temporary: {is_temp_file})")
         
         # Step 2: Run Whisper STT (can be disabled)
         if settings.ENABLE_STT:
             logger.info("Running Whisper STT...")
-            full_text, segments, language = transcribe_audio_file(audio_path)
+            full_text, segments, language = transcribe_audio_file(local_file_path)
         else:
             logger.info("STT step disabled - using dummy transcription")
-            full_text, segments, language = dummy_transcription(audio_path)
+            full_text, segments, language = dummy_transcription(local_file_path)
         
         # Step 3: Run summarisation (can be disabled)
         if settings.ENABLE_SUMMARIZATION:
@@ -106,6 +109,12 @@ def process_job(job: Dict[str, Any]) -> None:
             send_callback(callback_url, error_payload)
         else:
             logger.info("Callback step disabled - not sending error callback")
+    
+    finally:
+        # Clean up temporary file if it was downloaded
+        if is_temp_file and local_file_path:
+            logger.info(f"Cleaning up temporary file: {local_file_path}")
+            cleanup_temp_file(local_file_path)
 
 
 def main():

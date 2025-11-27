@@ -37,6 +37,11 @@ async def create_transcription(request: TranscriptionRequest):
     """
     Create a new transcription job.
     
+    The audio_path can be:
+    - HTTP/HTTPS URL: File will be downloaded before processing
+    - Local file path: File will be validated and processed directly
+    - Network path: Should be mounted/accessible to the worker
+    
     Args:
         request: TranscriptionRequest containing audio_path, agent_id, etc.
         
