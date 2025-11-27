@@ -3,7 +3,6 @@ set -euo pipefail
 
 APP_GIT_URL="https://github.com/avadec/avst-service.git"
 DEFAULT_INSTALL_DIR="/opt/avst-service"
-DEFAULT_AUDIO_PATH="/mnt/audio"
 DEFAULT_API_PORT="8000"
 ENV_FILE_NAME=".env.avst"
 
@@ -225,48 +224,13 @@ clone_or_update_repo() {
   fi
 }
 
-validate_audio_path() {
-  local audio_path="$1"
-  
-  # Check if path exists
-  if [[ ! -d "$audio_path" ]]; then
-    echo ""
-    echo "WARNING: Specified folder does not exist: $audio_path"
-    local proceed
-    proceed="$(ask_yes_no "Would you like to proceed with this folder?" "n")"
-    
-    if [[ "$proceed" != "true" ]]; then
-      return 1  # Validation failed
-    fi
-    return 0  # User chose to proceed anyway
-  fi
-  
-  # Check if path is accessible (readable)
-  if [[ ! -r "$audio_path" ]]; then
-    echo ""
-    echo "WARNING: Specified folder is not accessible (no read permissions): $audio_path"
-    local proceed
-    proceed="$(ask_yes_no "Would you like to proceed with this folder?" "n")"
-    
-    if [[ "$proceed" != "true" ]]; then
-      return 1  # Validation failed
-    fi
-    return 0  # User chose to proceed anyway
-  fi
-  
-  # Path exists and is accessible
-  log "Audio path validated: $audio_path"
-  return 0
-}
-
 generate_env_file() {
   local install_dir="$1"
   local enable_stt="$2"
   local enable_summarization="$3"
   local enable_callback="$4"
-  local audio_path="$5"
-  local api_port="$6"
-  local default_callback_url="$7"
+  local api_port="$5"
+  local default_callback_url="$6"
 
   local env_path="$install_dir/$ENV_FILE_NAME"
 
@@ -281,9 +245,6 @@ REDIS_URL=redis://redis:6379/0
 
 # API port (external mapping is configured in docker-compose file)
 API_PORT=${api_port}
-
-# Audio path inside container; host mapping is configured in docker-compose file
-AUDIO_HOST_PATH=${audio_path}
 
 # Whisper STT configuration
 WHISPER_MODEL=large-v3
@@ -303,6 +264,11 @@ CALLBACK_RETRY_DELAY_SECONDS=3
 ENABLE_STT=${enable_stt}
 ENABLE_SUMMARIZATION=${enable_summarization}
 ENABLE_CALLBACK=${enable_callback}
+
+# Remote file download configuration
+TEMP_DOWNLOAD_DIR=/tmp/audio_downloads
+DOWNLOAD_TIMEOUT_SECONDS=300
+DOWNLOAD_CHUNK_SIZE=8192
 EOF
 
   log "Environment file created."
@@ -314,9 +280,8 @@ print_summary() {
   local enable_summarization="$3"
   local enable_callback="$4"
   local api_port="$5"
-  local audio_path="$6"
-  local compose_files="$7"
-  local install_mode="$8"
+  local compose_files="$6"
+  local install_mode="$7"
 
   cat <<EOF
 
@@ -335,7 +300,7 @@ Features:
 
 Runtime:
   API port (host):  ${api_port}
-  Audio host path:  ${audio_path}
+  Audio source:     Remote URLs or local paths
 
 EOF
 
@@ -362,7 +327,7 @@ EOF
 Next steps:
   1) Ensure your compose file references the env file:
 
-     In your compose files, under 'services:':
+     In your compose files, under 'services':
 
        services:
          api:
@@ -375,14 +340,6 @@ Next steps:
            env_file:
              - ${ENV_FILE_NAME}
 
-     Also make sure the worker service mounts the audio folder, for example:
-
-       services:
-         worker:
-           # ...
-           volumes:
-             - "\${AUDIO_HOST_PATH}:/mnt/audio:ro"
-
   2) Start the stack (if not already started):
 
        cd ${install_dir}
@@ -392,14 +349,24 @@ Next steps:
 
        curl http://localhost:${api_port}/health
 
-  4) Tail logs:
+  4) Submit a transcription job:
+
+       curl -X POST http://localhost:${api_port}/transcriptions \\
+         -H "Content-Type: application/json" \\
+         -d '{
+           "audio_path": "https://example.com/audio.wav",
+           "agent_id": "agent-123",
+           "callback_url": "https://your-server.com/callback"
+         }'
+
+  5) Tail logs:
 
        cd ${install_dir}
        ${AVST_DOCKER_COMPOSE} ${compose_files} logs -f api
        ${AVST_DOCKER_COMPOSE} ${compose_files} logs -f worker
 
 You can re-run install.sh safely to regenerate ${ENV_FILE_NAME}
-(if you want to change feature flags, audio path, or port).
+(if you want to change feature flags or port).
 EOF
 }
 
@@ -455,18 +422,6 @@ INSTALL_DIR="$(ask_with_default "Installation directory" "$DEFAULT_INSTALL_DIR")
 INSTALL_DIR="${INSTALL_DIR/#\~/$HOME}"
 clone_or_update_repo "$INSTALL_DIR"
 
-AUDIO_PATH="$(ask_with_default "Host path to mounted audio folder" "$DEFAULT_AUDIO_PATH")"
-# Expand tilde in audio path as well
-AUDIO_PATH="${AUDIO_PATH/#\~/$HOME}"
-
-# Validate audio path and re-prompt if user declines
-while ! validate_audio_path "$AUDIO_PATH"; do
-  echo ""
-  log "Please specify a different audio folder path."
-  AUDIO_PATH="$(ask_with_default "Host path to mounted audio folder" "$DEFAULT_AUDIO_PATH")"
-  AUDIO_PATH="${AUDIO_PATH/#\~/$HOME}"
-done
-
 API_PORT="$(ask_with_default "API port on host" "$DEFAULT_API_PORT")"
 
 if [[ "$INSTALL_MODE" == "testing" ]]; then
@@ -495,7 +450,7 @@ else
   fi
 fi
 
-generate_env_file "$INSTALL_DIR" "$ENABLE_STT" "$ENABLE_SUMMARIZATION" "$ENABLE_CALLBACK" "$AUDIO_PATH" "$API_PORT" "$DEFAULT_CALLBACK_URL"
+generate_env_file "$INSTALL_DIR" "$ENABLE_STT" "$ENABLE_SUMMARIZATION" "$ENABLE_CALLBACK" "$API_PORT" "$DEFAULT_CALLBACK_URL"
 
 # In testing mode, create necessary files for bind mounts
 if [[ "$INSTALL_MODE" == "testing" ]]; then
@@ -522,4 +477,4 @@ else
   echo "  cd $INSTALL_DIR && ${AVST_DOCKER_COMPOSE} -f ${COMPOSE_FILE_NAME} up -d --build"
 fi
 
-print_summary "$INSTALL_DIR" "$ENABLE_STT" "$ENABLE_SUMMARIZATION" "$ENABLE_CALLBACK" "$API_PORT" "$AUDIO_PATH" "$COMPOSE_FILES" "$INSTALL_MODE"
+print_summary "$INSTALL_DIR" "$ENABLE_STT" "$ENABLE_SUMMARIZATION" "$ENABLE_CALLBACK" "$API_PORT" "$COMPOSE_FILES" "$INSTALL_MODE"
