@@ -114,6 +114,10 @@ def transcribe_audio_file(path: str) -> Tuple[str, List[Dict[str, Any]], str]:
     """
     logger.info(f"Starting transcription for file: {path}")
     
+    # Validate the file exists before continuing (even in testing mode)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Audio file not found: {path}")
+    
     # Use mock transcription in testing mode
     if settings.TESTING_MODE:
         logger.info("Using mock transcription (TESTING_MODE=True)")
