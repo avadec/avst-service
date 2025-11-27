@@ -109,6 +109,15 @@ clone_or_update_repo() {
     log "Repository already exists at $install_dir. Updating..."
     (
       cd "$install_dir"
+      
+      # Check for local changes
+      if ! git diff-index --quiet HEAD -- 2>/dev/null || [[ -n $(git ls-files --others --exclude-standard 2>/dev/null) ]]; then
+        log "Detected local changes in repository."
+        log "Resetting to clean state before update..."
+        git reset --hard HEAD
+        git clean -fd
+      fi
+      
       git pull --rebase
     )
   else
