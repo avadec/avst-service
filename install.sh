@@ -310,9 +310,13 @@ echo
 check_prereqs
 
 INSTALL_DIR="$(ask_with_default "Installation directory" "$DEFAULT_INSTALL_DIR")"
+# Expand tilde to home directory if present
+INSTALL_DIR="${INSTALL_DIR/#\~/$HOME}"
 clone_or_update_repo "$INSTALL_DIR"
 
 AUDIO_PATH="$(ask_with_default "Host path to mounted audio folder" "$DEFAULT_AUDIO_PATH")"
+# Expand tilde in audio path as well
+AUDIO_PATH="${AUDIO_PATH/#\~/$HOME}"
 API_PORT="$(ask_with_default "API port on host" "$DEFAULT_API_PORT")"
 
 if [[ "$INSTALL_MODE" == "testing" ]]; then
@@ -342,6 +346,16 @@ else
 fi
 
 generate_env_file "$INSTALL_DIR" "$ENABLE_STT" "$ENABLE_SUMMARIZATION" "$ENABLE_CALLBACK" "$AUDIO_PATH" "$API_PORT" "$DEFAULT_CALLBACK_URL"
+
+# In testing mode, create necessary files for bind mounts
+if [[ "$INSTALL_MODE" == "testing" ]]; then
+  log "Preparing testing mode files..."
+  # Create testing_output.log as a file (not directory) for Docker bind mount
+  touch "$INSTALL_DIR/testing_output.log"
+  # Create test_audio directory if it doesn't exist
+  mkdir -p "$INSTALL_DIR/test_audio"
+  log "Testing mode files prepared."
+fi
 
 # Optional: ask whether to start stack now
 SHOULD_START="$(ask_yes_no "Start Docker stack now (${AVST_DOCKER_COMPOSE} ${COMPOSE_FILES} up -d --build)?" "y")"
