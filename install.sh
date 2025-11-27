@@ -385,8 +385,8 @@ parse_args() {
         ;;
       --prod|--production)
         INSTALL_MODE="prod"
-        COMPOSE_FILE_NAME="docker-compose.yml"
-        COMPOSE_FILES="-f docker-compose.yml"
+        COMPOSE_FILE_NAME="docker-compose.prod.yml"
+        COMPOSE_FILES="-f docker-compose.yml -f docker-compose.prod.yml"
         ;;
       *)
         ;;

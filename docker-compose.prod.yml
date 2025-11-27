@@ -1,0 +1,15 @@
+
+# Production GPU-enabled docker-compose override
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+# This file adds GPU support for production deployments with NVIDIA GPUs
+
+services:
+  worker:
+    # Request GPU access for production workloads
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2  # Request access to both GPUs (0 and 1)
+              capabilities: [gpu]

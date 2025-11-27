@@ -35,8 +35,10 @@ services:
     networks:
       - transcriber_network
 
-  # Worker service (needs both GPUs)
+  # Worker service (processes transcription jobs)
+  # Note: GPU support is added via docker-compose.prod.yml for production
   worker:
+    build: .
     image: transcriber_service:latest
     container_name: transcriber_worker
     command: ["python", "-m", "app.worker"]
@@ -65,13 +67,6 @@ services:
     restart: unless-stopped
     networks:
       - transcriber_network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 2  # Request access to both GPUs (0 and 1)
-              capabilities: [gpu]
 
 networks:
   transcriber_network:

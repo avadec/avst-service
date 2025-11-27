@@ -2,12 +2,16 @@
 # Testing mode docker-compose override
 # Usage: docker compose -f docker-compose.yml -f docker-compose.testing.yml up
 #
-# IMPORTANT FOR macOS USERS:
+# IMPORTANT LIMITATION:
 # Docker Compose cannot remove the GPU 'deploy' section from docker-compose.yml when merging.
-# On macOS (no NVIDIA drivers), use docker-compose.mac.yml instead:
-#   docker compose -f docker-compose.mac.yml up
+# This file will still try to use NVIDIA drivers even in testing mode.
 #
-# This file is intended for Linux servers running in CPU-only testing mode.
+# RECOMMENDED SOLUTIONS:
+# - On macOS: Use docker-compose.mac.yml instead (standalone, no GPU)
+# - On Linux without GPU: Remove the 'deploy' section from docker-compose.yml
+# - On Linux with GPU: This file works (uses CPU via env vars, ignores GPU)
+#
+# This file is intended for Linux servers that HAVE GPUs installed but want to test in CPU mode.
 
 services:
   api:
@@ -29,7 +33,7 @@ services:
       WHISPER_DEVICE: "cpu"
       WHISPER_COMPUTE_TYPE: "int8"
       LLM_DEVICE: "cpu"
-
+    
     # Override volumes for local testing (replaces /mnt/audio with local dir)
     volumes:
       - ./test_audio:/mnt/audio:ro
