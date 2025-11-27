@@ -1,6 +1,13 @@
 
 # Testing mode docker-compose override
 # Usage: docker compose -f docker-compose.yml -f docker-compose.testing.yml up
+#
+# IMPORTANT FOR macOS USERS:
+# Docker Compose cannot remove the GPU 'deploy' section from docker-compose.yml when merging.
+# On macOS (no NVIDIA drivers), use docker-compose.mac.yml instead:
+#   docker compose -f docker-compose.mac.yml up
+#
+# This file is intended for Linux servers running in CPU-only testing mode.
 
 services:
   api:
@@ -19,10 +26,9 @@ services:
       ENABLE_STT: "false"
       ENABLE_SUMMARIZATION: "false"
       ENABLE_CALLBACK: "false"
-
-    # Remove GPU reservations from the base compose (no NVIDIA on Mac)
-    # This overrides the whole `deploy` block from docker-compose.yml
-    deploy: {}
+      WHISPER_DEVICE: "cpu"
+      WHISPER_COMPUTE_TYPE: "int8"
+      LLM_DEVICE: "cpu"
 
     # Override volumes for local testing (replaces /mnt/audio with local dir)
     volumes:
